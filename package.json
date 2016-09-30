@@ -1,0 +1,28 @@
+{
+  "name": "threejs-graphical-programming-environment",
+  "version": "1.0.0",
+  "description": "A graphical programming environment inspired by maxmsp written in javascript using threejs.",
+  "main": "index.js",
+  "scripts": {
+    "test": "budo test.js --live --open"
+  },
+  "keywords": [
+    "threejs",
+    "graphical",
+    "programming",
+    "environment",
+    "puredata",
+    "maxmsp",
+    "vvvv"
+  ],
+  "author": "Tomasz Dysinski <oz@bunnybones.com>",
+  "license": "ISC",
+  "dependencies": {
+    "input-mousewheel": "^3.0.0",
+    "input-unified-pointers": "^2.2.2",
+    "raf-tweener": "^3.0.4",
+    "three": "^0.81.2",
+    "threejs-camera-controller-pan-zoom-unified-pointer": "^5.0.0",
+    "threejs-managed-view": "^4.0.3"
+  }
+}

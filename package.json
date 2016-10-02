@@ -23,6 +23,7 @@
     "raf-tweener": "^3.0.4",
     "three": "^0.81.2",
     "threejs-camera-controller-pan-zoom-unified-pointer": "^5.0.0",
+    "threejs-hittest": "^3.1.0",
     "threejs-managed-view": "^4.0.3"
   }
 }

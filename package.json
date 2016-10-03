@@ -18,6 +18,7 @@
   "author": "Tomasz Dysinski <oz@bunnybones.com>",
   "license": "ISC",
   "dependencies": {
+    "esprima": "^3.0.0",
     "input-mousewheel": "^3.0.0",
     "input-unified-pointers": "^2.2.2",
     "load-bmfont": "^1.2.3",

@@ -3,6 +3,7 @@
 .idea
 
 node_modules
+!src/node_modules
 build
 release
 .env

@@ -3,35 +3,71 @@ var View = require('InteractiveView');
 var Keyboard = require('game-keyboard');
 var keymap = require('game-keyboard/key_map').US;
 var hitTest = require('threejs-hittest');
+var ContextMenuManager = require('ContextMenuManager');
+var ConnectionManager = require('ConnectionManager');
+var SelectionManager = require('SelectionManager');
+var loadFont = require('load-bmfont');
+var Label = require('nodeObjects/Label');
 
-function App() {
+function App(onInit) {
+	this.start = this.start.bind(this);
+	this.onInit = onInit;
+	this.loadFont();
+}
+
+App.prototype.loadFont = function() {
+	var start = this.start;
+	loadFont('assets/font/Roboto-msdf.json', function (err, font) {
+		if (err) throw err;
+		THREE.ImageUtils.loadTexture('assets/font/Roboto-msdf.png', undefined, function (texture) {
+			Label.initFont(font, texture);
+			start();
+		});
+	});
+};
+
+App.prototype.start = function() {
 	var keyboard = new Keyboard(keymap);
 	var view = new View();
 
 	var sceneChildren = view.scene.children;
 	var screenSize = view.size;
 	var camera = view.camera;
-	var selected = [];
 
-	function selectObject(item) {
-		selected.push(item);
-		if(!item.positionBackup) {
-			item.positionBackup = new THREE.Vector3();
-		}
-		item.positionBackup.copy(item.position);
-	}
+	var contextMenuManager = new ContextMenuManager(this);
+	var connectionManager = new ConnectionManager(this);
+	var selectionManager = new SelectionManager(this);
+	var selectionManager = new SelectionManager(this);
 
+	var attachmentCursor = null;
+	var attachmentOrigin = null;
 	function startDrag(x, y) {
 		var hits = hitTest(
 			x / screenSize.x * 2 - 1,
 			y / screenSize.y * 2 - 1,
 			camera,
-			sceneChildren
+			sceneChildren,
+			true
 		);
 		if(hits.length > 0) {
-			selectObject(hits[0].object);
+			var obj = hits[0].object;
+			if(obj.isAttachmentPoint) {
+				var original = obj;
+				obj = original.clone();
+				obj.connections = [];
+				obj.material.opacity = 0.5;
+				obj.material.transparent = true;
+				view.scene.add(obj);
+				obj.position.applyMatrix4(original.parent.matrixWorld);
+				attachmentCursor = obj;
+				attachmentOrigin = original;
+				connectionManager.connect(original, obj);
+			}
+			selectionManager.selectObject(obj);
 			onDownWorldCoord.copy(hits[0].point);
 			onDownClipSpaceCoord.copy(onDownWorldCoord).project(camera);
+		} else {
+			contextMenuManager.beginWait();
 		}
 	}
 	var screenDelta = new THREE.Vector2();
@@ -43,17 +79,50 @@ function App() {
 			onDownClipSpaceCoord.y + (y / screenSize.y * 2 - 1)
 		);
 
-		selected.forEach(function(item) {
+		selectionManager.selected.forEach(function(item) {
 			item.position.copy(item.positionBackup);
 			item.position.project(camera);
 			item.position.x -= screenDelta.x;
 			item.position.y -= screenDelta.y;
 			item.position.unproject(camera);
 		});
+		if(screenDelta.length() > 0.01) {
+			contextMenuManager.abortWait();
+		}
 	}
 	function stopDrag(x, y) {
 		// debugger;
-		selected.length = 0;
+		selectionManager.unselectAll();
+		contextMenuManager.abortWait();
+		if(attachmentCursor) {
+			var hits = hitTest(
+				x / screenSize.x * 2 - 1,
+				y / screenSize.y * 2 - 1,
+				camera,
+				sceneChildren,
+				true
+			);
+			var connected = false;
+			hits = hits.filter(function(hit) {
+				return hit.object !== attachmentCursor;
+			});
+			if(hits.length === 0) {
+				connectionManager.disconnect(attachmentOrigin, attachmentCursor);
+				attachmentCursor.parent.remove(attachmentCursor);
+			}
+			while(hits.length > 0 && !connected) {
+				var hit = hits.shift();
+				var obj = hit.object;
+				if(obj.isAttachmentPoint && obj !== attachmentCursor) {
+					connectionManager.disconnect(attachmentCursor, attachmentOrigin);
+					attachmentCursor.parent.remove(attachmentCursor);
+					connectionManager.connect(attachmentOrigin, obj);
+					connected = true;
+				}
+			}
+			attachmentCursor = null;
+			attachmentOrigin = null;
+		}
 	}
 	function hijackSignal(signal, action) {
 		function conditionalHalt() {
@@ -70,6 +139,8 @@ function App() {
 	view.pointers.onPointerUpSignal.add(stopDrag, null, 100);
 
 	this.view = view;
-}
+	this.connectionManager = connectionManager;
+	this.onInit();
+};
 
 module.exports = App;
